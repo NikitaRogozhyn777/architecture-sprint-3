@@ -204,7 +204,7 @@
 
 **Диаграмма кода (Code)**
 
-**1. Диаграмма кода для HouseCommandService в house-microservice **
+**1. Диаграмма кода для HouseCommandService в house-microservice**
 
 ```markdown
 ./c4-diagrams/code-diagrams/house-microservice/code-HouseCommandService.puml
