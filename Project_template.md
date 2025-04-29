@@ -1,7 +1,3 @@
-# Project_template
-
-Это шаблон для решения проектной работы. Структура этого файла повторяет структуру заданий. Заполняйте его по мере работы над решением.
-
 # Задание 1. Анализ и планирование
 
 «Тёплый дом» — это небольшая компания, которая организует удалённое управление отоплением в доме. Недавно она выиграла тендер и получила заказ на создание экосистемы умных посёлков на территории нескольких регионов страны.
@@ -151,14 +147,14 @@
 Контейнерная диаграмма планируемой архитектуры приложения (TO BE).
 
 ```markdown
-./c4-diagrams/container-microservices.png
+./c4-diagrams/container-microservices.puml
 ```
 
 ![Контейнерная диаграмма](./c4-diagrams/container-microservices.png)
 
 **Диаграмма компонентов (Components)**
 
-**1. Компонентная диаграмма для house-microservice **
+**1. Компонентная диаграмма для house-microservice**
 
 ```markdown
 ./c4-diagrams/component-diagrams/component-house-microservice.puml
@@ -166,7 +162,7 @@
 
 ![Компонентная диаграмма для house-microservice](./c4-diagrams/component-diagrams/component-house-microservice.png)
 
-**2. Компонентная диаграмма для report-microservice **
+**2. Компонентная диаграмма для report-microservice**
 
 ```markdown
 ./c4-diagrams/component-diagrams/component-report-microservice.puml
@@ -174,7 +170,7 @@
 
 ![Компонентная диаграмма для report-microservice](./c4-diagrams/component-diagrams/component-report-microservice.png)
 
-**3. Компонентная диаграмма для user-microservice **
+**3. Компонентная диаграмма для user-microservice**
 
 ```markdown
 ./c4-diagrams/component-diagrams/component-user-service.puml
@@ -182,7 +178,7 @@
 
 ![Компонентная диаграмма для user-microservice](./c4-diagrams/component-diagrams/component-user-service.png)
 
-**4. Компонентная диаграмма для notification-microservice **
+**4. Компонентная диаграмма для notification-microservice**
 
 ```markdown
 ./c4-diagrams/component-diagrams/component-notification-microservice.puml
@@ -190,7 +186,7 @@
 
 ![Компонентная диаграмма для notification-microservice](./c4-diagrams/component-diagrams/component-notification-microservice.png)
 
-**5. Компонентная диаграмма для device-microservice **
+**5. Компонентная диаграмма для device-microservice**
 
 ```markdown
 ./c4-diagrams/component-diagrams/component-device-microservice.puml
@@ -198,10 +194,10 @@
 
 ![Компонентная диаграмма для device-microservice](./c4-diagrams/component-diagrams/component-device-microservice.png)
 
-**6. Компонентная диаграмма для iot-gateway **
+**6. Компонентная диаграмма для iot-gateway**
 
 ```markdown
-./c4-diagrams/component-diagrams
+./c4-diagrams/component-diagrams/component-iot-gateway.puml
 ```
 
 ![Компонентная диаграмма для iot-gateway](./c4-diagrams/component-diagrams/component-iot-gateway.png)
@@ -211,17 +207,17 @@
 **1. Диаграмма кода для HouseCommandService в house-microservice **
 
 ```markdown
-./c4-diagrams/code-diagrams/house-microservice/code-HouseCommandService.png
+./c4-diagrams/code-diagrams/house-microservice/code-HouseCommandService.puml
 ```
 
 ![Диаграмма кода для HouseCommandService в house-microservice](./c4-diagrams/code-diagrams/house-microservice/code-HouseCommandService.png)
 
 # Задание 3. Разработка ER-диаграммы
 
-** ER Диаграмма **
+**ER Диаграмма**
 
 ```markdown
-./c4-diagrams/code-diagrams/house-microservice/code-HouseCommandService.png
+./er-diagrams//ER-diagram.puml
 ```
 
 ![ER Диаграмма](./er-diagrams//ER-diagram.png)
