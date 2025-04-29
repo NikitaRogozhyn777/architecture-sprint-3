@@ -46,7 +46,7 @@ System_Ext(api_gw, "API Gateway", "KrakenD")
 SystemDb(device_db_master, "PostgreSQL", "Device DB Master", "Метаданные (Write)")
 SystemDb(device_db_replica, "PostgreSQL", "Device DB Replica", "Метаданные (Read)")
 System_Ext(kafka, "Message Broker", "Apache Kafka")
-System_Ext(iot_gw, "IoT Gateway", "Java/Spring/Apache Camel")
+System_Ext(iot_gw, "IoT Gateway", "Java/Spring/Rabbit MQ")
 System_Ext(elk, "ELK Stack", "Логирование")
 System_Ext(prometheus, "Prometheus", "Метрики")
 
