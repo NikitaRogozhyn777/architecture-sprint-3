@@ -1,0 +1,135 @@
+@startuml ER Diagram for Smart Home System
+
+' Настройки отображения
+hide circle
+skinparam linetype ortho
+
+' Сущности
+entity User {
+  * id : number <<generated>>
+  --
+  * email : varchar
+  first_name : varchar
+  last_name : varchar
+  phone : varchar
+  * created_at : timestamp
+  is_active : boolean
+}
+
+entity Role {
+  * id : number <<generated>>
+  --
+  * name : varchar
+  permissions : json
+}
+
+entity House {
+  * id : number <<generated>>
+  --
+  * name : varchar
+  * address : varchar
+  * owner_id : number <<FK>>
+  created_at : timestamp
+  timezone : varchar
+}
+
+entity Room {
+  * id : number <<generated>>
+  --
+  * name : varchar
+  * house_id : number <<FK>>
+  floor : integer
+  area_sqm : float
+}
+
+entity DeviceType {
+  * id : number <<generated>>
+  --
+  * name : varchar
+  manufacturer : varchar
+  model : varchar
+  capabilities : json
+}
+
+entity Device {
+  * id : number <<generated>>
+  --
+  * name : varchar
+  * type_id : number <<FK>>
+  * house_id : number <<FK>>
+  room_id : number <<FK>>
+  ip : varchar
+  mac : varchar
+  status : varchar
+  created_at : timestamp
+}
+
+entity TelemetryData {
+  * id : number <<generated>>
+  --
+  * device_id : number <<FK>>
+  * metric_type : varchar
+  * value : float
+  * timestamp : timestamp
+}
+
+entity Report {
+  * id : number <<generated>>
+  --
+  * house_id : number <<FK>>
+  * period_from : timestamp
+  * period_to : timestamp
+  * type : varchar
+  status : varchar
+  generated_by : number <<FK>>
+}
+
+entity Notification {
+  * id : number <<generated>>
+  --
+  * user_id : number <<FK>>
+  * title : varchar
+  * message : text
+  is_read : boolean
+  created_at : timestamp
+}
+
+' Связи
+User }|--|| House : "1 owner to many houses"
+User }o--o{ Role : "user_house_roles (M:N)"
+House ||--o{ Room : "1 to many"
+House ||--o{ Device : "1 to many"
+DeviceType ||--o{ Device : "1 to many"
+Device ||--o{ TelemetryData : "1 to many"
+User ||--o{ Notification : "1 to many"
+House ||--o{ Report : "1 to many"
+User }|--o{ Report : "generated_by"
+
+' Связующая таблица для M:N
+entity user_house_roles {
+  * user_id : number <<FK>>
+  * house_id : number <<FK>>
+  * role_id : number <<FK>>
+  --
+  created_at : timestamp
+}
+
+User }o--o{ user_house_roles
+House }o--o{ user_house_roles
+Role }o--o{ user_house_roles
+
+' Наследование устройств
+entity SensorDevice {
+  measurement_unit : varchar
+  accuracy : float
+}
+
+entity SwitchDevice {
+  max_power : float
+  current_state : boolean
+}
+
+Device }|-- SensorDevice
+Device }|-- SwitchDevice
+
+@enduml

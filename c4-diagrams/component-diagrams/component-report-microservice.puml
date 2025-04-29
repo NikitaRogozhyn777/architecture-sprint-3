@@ -1,0 +1,84 @@
+@startuml Report Service - CQRS Component Diagram (with DB Replicas)
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+AddElementTag("command", $bgColor="#E1F5FE", $fontColor="#0277BD", $borderColor="#4FC3F7")
+AddElementTag("query", $bgColor="#E8F5E9", $fontColor="#2E7D32", $borderColor="#81C784")
+AddElementTag("event", $bgColor="#FFF3E0", $fontColor="#EF6C00", $borderColor="#FFA726")
+AddElementTag("observability", $bgColor="#F3E5F5", $fontColor="#7B1FA2", $borderColor="#BA68C8")
+
+Container_Boundary(report_service, "Сервис отчётов (Spring Boot Application)") {
+
+    ' --- Command Side ---
+    Component(report_command_controller, "ReportCommandController", "Spring REST Controller", "Принимает команды генерации отчётов", $tags="command")
+    Component(report_aggregate, "ReportAggregate", "Spring @Service", "Формирование отчёта", $tags="command")
+    Component(report_command_service, "ReportCommandService", "Spring @Service", "Оркестрация процесса генерации", $tags="command")
+
+    ' --- Query Side ---
+    Component(report_query_controller, "ReportQueryController", "Spring REST Controller", "Предоставляет готовые отчёты", $tags="query")
+    Component(report_read_repository, "ReportReadRepository", "Spring Data JPA", "Чтение метаданных отчётов", $tags="query")
+    Component(data_fetcher, "SensorDataFetcher", "Spring @Service", "Получение данных из InfluxDB", $tags="query")
+
+    ' --- Event Processing ---
+    Component(report_event_handler, "ReportEventListener", "Spring @KafkaListener", "Обработка событий от устройств", $tags="event")
+    Component(report_event_publisher, "ReportEventPublisher", "Spring KafkaTemplate", "Публикация событий отчётов", $tags="event")
+
+    ' --- Observability ---
+    Component(report_logging_aspect, "ReportLoggingAspect", "Spring AOP", "Логирование операций", $tags="observability")
+    Component(report_metrics_service, "ReportMetricsService", "Micrometer", "Сбор метрик производительности", $tags="observability")
+
+    ' --- Internal Connections ---
+    Rel(report_command_controller, report_command_service, "@PostMapping", "HTTP")
+    Rel(report_command_service, report_aggregate, "generateReport()", "Java method")
+    Rel(report_aggregate, report_event_publisher, "publishReportEvent()", "KafkaTemplate")
+    Rel(report_query_controller, report_read_repository, "@GetMapping", "HTTP")
+    Rel(report_query_controller, data_fetcher, "fetchSensorData()", "HTTP")
+    Rel(report_event_handler, report_command_service, "handleDeviceEvent()", "Method call")
+    Rel(report_logging_aspect, report_command_controller, "Логирует команды", "AOP Advice")
+    Rel(report_metrics_service, data_fetcher, "Метрики запросов", "Micrometer")
+}
+
+' --------- External Systems ---------
+System_Ext(api_gw, "API Gateway", "[KrakenD]")
+
+' БАЗА ОТЧЁТОВ (Report DB)
+SystemDb(report_db_master, "PostgreSQL", "Report DB Master", "Метаданные отчётов (Write)")
+SystemDb(report_db_replica1, "PostgreSQL", "Report DB Replica 1", "Чтение метаданных")
+SystemDb(report_db_replica2, "PostgreSQL", "Report DB Replica 2", "Аналитика отчётов")
+
+' БАЗА УСТРОЙСТВ (Device DB)
+SystemDb(device_db_replica1, "PostgreSQL", "Device DB Replica 1", "Чтение метаданных")
+SystemDb(device_db_replica2, "PostgreSQL", "Device DB Replica 2", "Аналитика устройств")
+
+SystemDb(influxdb, "InfluxDB", "Данные датчиков")
+System_Ext(kafka, "Message Broker", "Apache Kafka")
+System_Ext(elk, "ELK Stack", "Логирование")
+System_Ext(prometheus, "Prometheus", "Метрики")
+
+' --- Database Connections ---
+' Report DB Connections
+Rel(report_command_service, report_db_master, "Сохраняет метаданные", "JDBC (Write)")
+Rel(report_read_repository, report_db_replica1, "Читает метаданные", "JDBC (Read)")
+Rel(report_read_repository, report_db_replica2, "Читает для аналитики", "JDBC (Read)")
+
+' Device DB Connections
+Rel(data_fetcher, device_db_replica1, "Читает device_info", "JDBC (Read)")
+Rel(data_fetcher, device_db_replica2, "Читает для аналитики", "JDBC (Read)")
+
+' InfluxDB Connection
+Rel(data_fetcher, influxdb, "Запрашивает показания", "HTTP")
+
+' --- Event Bus ---
+Rel(report_event_publisher, kafka, "Публикует ReportGeneratedEvent", "Kafka")
+Rel(kafka, report_event_handler, "Слушает DeviceDataChangedEvent", "@KafkaListener")
+
+' --- Observability ---
+Rel(report_logging_aspect, elk, "Отправка логов", "Logstash")
+Rel(report_metrics_service, prometheus, "Экспорт метрик", "Prometheus Pull")
+
+' --- API Connections ---
+Rel(api_gw, report_command_controller, "/api/v1/reports/generate", "HTTP")
+Rel(api_gw, report_query_controller, "/api/v1/reports/{id}", "HTTP")
+
+SHOW_LEGEND()
+
+@enduml

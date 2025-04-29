@@ -1,0 +1,21 @@
+@startuml Умный дом - Context Diagram (AS-IS)
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title Умный дом - Context Diagram (AS-IS)
+
+Person(admin, "Администратор", "Настраивает систему через REST API")
+Person(user, "Пользователь", "Управляет отоплением через REST API")
+System(smart_home, "Умный дом (Монолит)", "Приложение для управление отоплением")
+System_Ext(sensor, "Датчик температуры", "Внешнее IoT-устройство")
+System_Ext(control_sensor, "Контролирующий датчик", "Внешнее IoT-устройство")
+
+Rel(admin, smart_home, "Настройка через REST API", "REST API (HTTPS)")
+Rel(user, smart_home, "Управление отоплением", "REST API (HTTPS)")
+Rel(sensor, smart_home, "Отправляет данные температуры", "HTTP")
+Rel(smart_home, sensor, "Команды калибровки", "HTTP")
+Rel(smart_home, control_sensor, "Команды управления отоплением", "HTTP")
+Rel(control_sensor, smart_home, "Отправляет данные текущего состояния", "HTTP")
+
+SHOW_LEGEND()
+
+@enduml

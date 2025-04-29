@@ -1,0 +1,66 @@
+@startuml House Service - Component Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+AddElementTag("command", $bgColor="#E1F5FE", $fontColor="#0277BD", $borderColor="#4FC3F7")
+AddElementTag("query", $bgColor="#E8F5E9", $fontColor="#2E7D32", $borderColor="#81C784")
+AddElementTag("event", $bgColor="#FFF3E0", $fontColor="#EF6C00", $borderColor="#FFA726")
+AddElementTag("observability", $bgColor="#F3E5F5", $fontColor="#7B1FA2", $borderColor="#BA68C8")
+
+Container_Boundary(house_service, "Сервис домов (Spring Boot Application)") {
+
+    ' --- Command Side ---
+    Component(command_controller, "HouseCommandController", "Spring REST Controller", "Принимает команды через HTTP", $tags="command")
+    Component(house_aggregate, "HouseAggregate", "Spring @Service", "Ядро бизнес-логики", $tags="command")
+    Component(command_service, "HouseCommandService", "Spring @Service", "Оркестрация командного потока", $tags="command")
+
+    ' --- Query Side ---
+    Component(query_controller, "HouseQueryController", "Spring REST Controller", "Обрабатывает read-запросы", $tags="query")
+    Component(read_repository, "HouseReadRepository", "Spring Data JPA", "Read-оптимизированные запросы", $tags="query")
+
+    ' --- Event Processing ---
+    Component(event_handler, "KafkaEventListener", "Spring @KafkaListener", "Обработка интеграционных событий", $tags="event")
+    Component(event_publisher, "DomainEventPublisher", "Spring KafkaTemplate", "Публикация доменных событий", $tags="event")
+
+    ' --- Observability ---
+    Component(logging_aspect, "LoggingAspect", "Spring AOP", "Логирование вызовов методов", $tags="observability")
+    Component(metrics_service, "MetricsService", "Micrometer", "Сбор метрик производительности", $tags="observability")
+
+    ' --- Internal Connections ---
+    Rel(command_controller, command_service, "@PostMapping", "HTTP")
+    Rel(command_service, house_aggregate, "processCommand()", "Java method")
+    Rel(house_aggregate, event_publisher, "publishEvent()", "KafkaTemplate")
+    Rel(query_controller, read_repository, "@GetMapping", "HTTP")
+    Rel(logging_aspect, command_controller, "Логирует вызовы", "AOP Advice")
+    Rel(logging_aspect, query_controller, "Логирует вызовы", "AOP Advice")
+    Rel(metrics_service, house_aggregate, "Собирает метрики", "Micrometer")
+}
+
+' --------- External Systems ---------
+SystemDb(postgres_master, "PostgreSQL", "Master Node (Write Model)")
+SystemDb(postgres_replica1, "PostgreSQL", "Read Replica 1 (For Queries)")
+SystemDb(postgres_replica2, "PostgreSQL", "Read Replica 2 (For Analytics)")
+System_Ext(api_gw, "API Gateway", "[KrakenD]")
+System_Ext(kafka, "Message Broker", "Apache Kafka")
+System_Ext(elk, "ELK Stack", "Elasticsearch + Logstash + Kibana")
+System_Ext(prometheus, "Prometheus", "Система сбора метрик")
+System_Ext(grafana, "Grafana", "Визуализация метрик")
+
+' --- Database Connections ---
+Rel(command_service, postgres_master, "Write Operations", "JDBC (Write)")
+Rel(read_repository, postgres_replica1, "Read Operations", "JDBC (Read)")
+Rel(read_repository, postgres_replica2, "Analytics Queries", "JDBC (Read)")
+
+' --- External Integrations ---
+Rel(api_gw, command_controller, "/api/v1/commands", "HTTP")
+Rel(api_gw, query_controller, "/api/v1/queries", "HTTP")
+Rel(event_publisher, kafka, "Publish Events", "Kafka Protocol")
+Rel(kafka, event_handler, "Consume Events", "@KafkaListener")
+
+' --- Observability Connections ---
+Rel(logging_aspect, elk, "Отправка логов", "Logstash TCP")
+Rel(metrics_service, prometheus, "Экспорт метрик", "Prometheus Pull")
+Rel(prometheus, grafana, "Визуализация данных", "DSN")
+
+SHOW_LEGEND()
+
+@enduml

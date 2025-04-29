@@ -1,0 +1,36 @@
+@startuml HouseCommandService - Code Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+AddElementTag("command", $bgColor="#E1F5FE", $fontColor="#0277BD", $borderColor="#4FC3F7")
+AddElementTag("infra", $bgColor="#F5F5F5", $fontColor="#616161", $borderColor="#9E9E9E")
+
+Container_Boundary(house_command_service, "HouseCommandService (Spring @Service)") {
+
+    Component(main_service, "HouseCommandServiceImpl", "@Service", "Основная реализация сервиса", $tags="command")
+    Component(validator, "HouseCommandValidator", "@Component", "Валидация команд", $tags="command")
+    Component(aggregate_factory, "HouseAggregateFactory", "@Component", "Создание агрегатов", $tags="command")
+    Component(dto_converter, "HouseDtoConverter", "@Component", "Преобразование DTO <-> Aggregate", $tags="command")
+
+    Component(repository, "HouseRepository", "JpaRepository", "Интерфейс доступа к БД", $tags="infra")
+    Component(tx_manager, "TransactionManager", "Spring PlatformTM", "Управление транзакциями", $tags="infra")
+
+    ' Internal connections
+    Rel(main_service, validator, "validateCommand()", "method call")
+    Rel(main_service, aggregate_factory, "createAggregate()", "method call")
+    Rel(main_service, dto_converter, "toDto()/fromDto()", "method call")
+    Rel(main_service, repository, "save()/findById()", "JPA call")
+    Rel(main_service, tx_manager, "@Transactional", "proxy")
+}
+
+' External connections
+Component(command_controller, "HouseCommandController", "@RestController")
+Component(house_aggregate, "HouseAggregate", "Domain Model")
+Component(postgres, "PostgreSQL", "Master Node")
+
+Rel(command_controller, main_service, "createHouse()", "Spring DI")
+Rel(main_service, house_aggregate, "applyCommand()", "domain method")
+Rel(repository, postgres, "JDBC", "Hibernate")
+
+SHOW_LEGEND()
+
+@enduml
