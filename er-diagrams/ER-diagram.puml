@@ -1,4 +1,4 @@
-@startuml ER Diagram for Smart Home System
+@startuml ER Diagram for Smart Home System (v2)
 
 ' Настройки отображения
 hide circle
@@ -16,21 +16,32 @@ entity User {
   is_active : boolean
 }
 
-entity Role {
-  * id : number <<generated>>
-  --
-  * name : varchar
-  permissions : json
-}
-
 entity House {
   * id : number <<generated>>
   --
   * name : varchar
   * address : varchar
-  * owner_id : number <<FK>>
   created_at : timestamp
   timezone : varchar
+}
+
+' Новая промежуточная сущность
+entity UserHouse {
+  * user_id : number <<FK>>
+  * house_id : number <<FK>>
+  --
+  * role_type : varchar <<"owner/member/guest">>
+  * access_level : integer
+  added_at : timestamp
+  added_by : number <<FK>>
+}
+
+' Остальные сущности остаются без изменений
+entity Role {
+  * id : number <<generated>>
+  --
+  * name : varchar
+  permissions : json
 }
 
 entity Room {
@@ -94,9 +105,12 @@ entity Notification {
   created_at : timestamp
 }
 
-' Связи
-User }|--|| House : "1 owner to many houses"
-User }o--o{ Role : "user_house_roles (M:N)"
+' Обновлённые связи Many-to-Many
+User }o--o{ UserHouse
+House }o--o{ UserHouse
+
+' Остальные связи
+UserHouse }|--|| Role : "Определяет права"
 House ||--o{ Room : "1 to many"
 House ||--o{ Device : "1 to many"
 DeviceType ||--o{ Device : "1 to many"
@@ -104,19 +118,6 @@ Device ||--o{ TelemetryData : "1 to many"
 User ||--o{ Notification : "1 to many"
 House ||--o{ Report : "1 to many"
 User }|--o{ Report : "generated_by"
-
-' Связующая таблица для M:N
-entity user_house_roles {
-  * user_id : number <<FK>>
-  * house_id : number <<FK>>
-  * role_id : number <<FK>>
-  --
-  created_at : timestamp
-}
-
-User }o--o{ user_house_roles
-House }o--o{ user_house_roles
-Role }o--o{ user_house_roles
 
 ' Наследование устройств
 entity SensorDevice {
@@ -131,5 +132,12 @@ entity SwitchDevice {
 
 Device }|-- SensorDevice
 Device }|-- SwitchDevice
+
+legend right
+  <b>Ключевые изменения:</b>
+  1. Замена связи 1-to-M между User и House на M-to-M
+  2. Новая сущность UserHouse с атрибутами доступа
+  3. Удалена связь user_house_roles (интегрировано в UserHouse)
+endlegend
 
 @enduml
