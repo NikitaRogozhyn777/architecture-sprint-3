@@ -1,0 +1,68 @@
+@startuml User Service - Component Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+AddElementTag("command", $bgColor="#E1F5FE", $fontColor="#0277BD", $borderColor="#4FC3F7")
+AddElementTag("query", $bgColor="#E8F5E9", $fontColor="#2E7D32", $borderColor="#81C784")
+AddElementTag("event", $bgColor="#FFF3E0", $fontColor="#EF6C00", $borderColor="#FFA726")
+AddElementTag("observability", $bgColor="#F3E5F5", $fontColor="#7B1FA2", $borderColor="#BA68C8")
+
+Container_Boundary(user_service, "Сервис пользователей (Spring Boot)") {
+
+    ' --- Command Side ---
+    Component(user_command_controller, "UserCommandController", "Spring REST", "Прием команд", $tags="command")
+    Component(user_aggregate, "UserAggregate", "@Service", "Бизнес-логика", $tags="command")
+    Component(user_command_service, "UserCommandService", "@Service", "Оркестрация", $tags="command")
+
+    ' --- Query Side ---
+    Component(user_query_controller, "UserQueryController", "Spring REST", "Чтение данных", $tags="query")
+    Component(user_read_repository, "UserReadRepository", "Spring Data JPA", "Read-модель", $tags="query")
+    Component(user_view_projector, "UserViewProjector", "@Service", "Проекции", $tags="query")
+
+    ' --- Event Processing ---
+    Component(user_event_handler, "UserEventHandler", "@KafkaListener", "Обработка событий", $tags="event")
+    Component(user_event_publisher, "UserEventPublisher", "KafkaTemplate", "Публикация", $tags="event")
+
+    ' --- Observability ---
+    Component(user_logger, "UserLogger", "Spring AOP", "Логирование", $tags="observability")
+    Component(user_metrics, "UserMetrics", "Micrometer", "Метрики", $tags="observability")
+
+    ' --- Internal Connections ---
+    Rel(user_command_controller, user_command_service, "@PostMapping", "HTTP")
+    Rel(user_command_service, user_aggregate, "processCommand()", "method")
+    Rel(user_aggregate, user_event_publisher, "publishEvent()", "async")
+    Rel(user_query_controller, user_read_repository, "@GetMapping", "HTTP")
+    Rel(user_event_handler, user_view_projector, "updateProjection()", "async")
+    Rel(user_logger, user_command_controller, "Логи команд", "AOP")
+    Rel(user_metrics, user_query_controller, "Метрики запросов", "Micrometer")
+}
+
+' --------- External Systems ---------
+System_Ext(api_gw, "API Gateway", "KrakenD")
+SystemDb(user_db_master, "PostgreSQL", "User DB Master", "Write-модель")
+SystemDb(user_db_replica, "PostgreSQL", "User DB Replica", "Read-модель")
+System_Ext(kafka, "Message Broker", "Apache Kafka")
+System_Ext(notification_service, "Notification Service", "Spring Boot")
+System_Ext(elk, "ELK Stack", "Логирование")
+System_Ext(prometheus, "Prometheus", "Метрики")
+
+' --- Database Connections ---
+Rel(user_command_service, user_db_master, "Сохраняет данные", "JDBC")
+Rel(user_read_repository, user_db_replica, "Читает данные", "JDBC")
+Rel(user_view_projector, user_db_replica, "Обновляет проекции", "JDBC")
+
+' --- Event Bus ---
+Rel(user_event_publisher, kafka, "UserChangedEvent", "Kafka")
+Rel(kafka, user_event_handler, "Подписка на события", "@KafkaListener")
+Rel(kafka, notification_service, "UserNotificationEvent", "Kafka")
+
+' --- Observability ---
+Rel(user_logger, elk, "Логи операций", "Logstash")
+Rel(user_metrics, prometheus, "Метрики сервиса", "Prometheus Push")
+
+' --- API Connections ---
+Rel(api_gw, user_command_controller, "/api/v1/users", "HTTP")
+Rel(api_gw, user_query_controller, "/api/v1/users/{id}", "HTTP")
+
+SHOW_LEGEND()
+
+@enduml

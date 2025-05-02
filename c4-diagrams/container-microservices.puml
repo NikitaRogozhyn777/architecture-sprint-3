@@ -1,0 +1,104 @@
+@startuml Умный дом - Container Diagram (TO-BE)
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+Person(admin, "Администратор дома", "Пользователь с полными правами управления домом")
+Person(user, "Пользователь дома", "Пользователь с ограниченными правами")
+Person(guest, "Гость", "Временный пользователь с минимальными правами")
+Person(app_admin, "Администратор приложения", "Технический администратор системы")
+Person(devops, "DevOps инженер/Команда разработки", "Мониторинг и поддержка системы")
+
+System_Boundary(system_boundary, "Умный дом (To-Be)") {
+    Container(mobile_app, "Мобильное приложение", "Android/iOS", "Предоставляет интерфейс для управления умным домом")
+    Container(spa, "Web SPA", "React", "Интерфейс для пользователей и администраторов приложения")
+
+    Container(api_gateway, "API Gateway", "KrakenD/API GW", "Единая точка входа для всех API запросов")
+    Container(iam_service, "IAM Service", "Keycloak", "Аутентификация и авторизация")
+    Container(user_service, "User Management", "Java/Spring", "Управление профилями пользователей")
+    Container(house_service, "Сервис домов", "Java/Spring", "Управление домами, комнатами")
+    Container(device_service, "Сервис устройств", "Java/Spring", "Управление подключенными устройствами")
+    Container(report_service, "Сервис отчетов", "Java/Spring", "Генерация отчетов по датчикам")
+    Container(notification_service, "Сервис уведомлений", "Java/Spring", "Отправка push-уведомлений")
+
+    Container(monitoring_service, "Мониторинг", "Prometheus + Grafana", "Сбор метрик и визуализация")
+    Container(logging_service, "Сбор логов", "ELK Stack", "Централизованное логирование")
+
+    ContainerDb(user_db, "База пользователей", "PostgreSQL", "Хранение профилей пользователей")
+    ContainerDb(house_db, "База домов", "PostgreSQL", "Хранение данных о домах и комнатах")
+    ContainerDb(device_db, "База устройств", "PostgreSQL", "Хранение данных об устройствах")
+    ContainerDb(report_db, "База отчетов", "PostgreSQL", "Хранение метаданных отчетов")
+    ContainerDb(time_series_db, "База временных рядов", "InfluxDB", "Хранение показаний датчиков")
+    ContainerDb(logs_db, "Хранилище логов", "Elasticsearch", "Хранение и индексация логов")
+
+    Container(message_broker, "Message Broker", "Apache Kafka", "Обработка событий между сервисами")
+
+    Container(iot_gateway, "IoT Gateway", "Java/Spring/Rabbit MQ", "Шлюз для общения с устройствами (MQTT/AMQP/Zigbee)")
+}
+
+System_Ext(sensors_system, "Датчики", "Различные IoT устройства и датчики")
+System_Ext(firebase, "Firebase Cloud Messaging", "Сервис push-уведомлений Google")
+
+' Связи пользователей
+Rel(app_admin, spa, "Администрирует приложение, управляет пользователями", "HTTPS")
+Rel(admin, mobile_app, "Управляет домом, настраивает устройства", "HTTPS")
+Rel(user, mobile_app, "Управляет разрешенными устройствами", "HTTPS")
+Rel(guest, mobile_app, "Просматривает состояние датчиков", "HTTPS")
+Rel(devops, monitoring_service, "Наблюдает за метриками системы", "HTTPS")
+Rel(devops, logging_service, "Анализирует логи системы", "HTTPS")
+
+' Связи фронтенда
+Rel(mobile_app, api_gateway, "API запросы", "REST/HTTPS")
+Rel(spa, api_gateway, "API запросы", "REST/HTTPS")
+
+' Связи API Gateway с сервисами
+Rel(api_gateway, iam_service, "Аутентификация и авторизация", "OAuth2/JWT")
+Rel(api_gateway, user_service, "Управление профилями", "REST/HTTP")
+Rel(api_gateway, house_service, "Запросы управления домом", "REST/HTTP")
+Rel(api_gateway, device_service, "Запросы управления устройствами", "REST/HTTP")
+Rel(api_gateway, report_service, "Запросы отчетов", "REST/HTTP")
+
+' Связи сервисов с БД
+Rel(user_service, user_db, "Чтение/запись профилей", "JDBC")
+Rel(house_service, house_db, "Чтение/запись данных о домах", "JDBC")
+Rel(device_service, device_db, "Чтение/запись данных об устройствах", "JDBC")
+Rel(report_service, report_db, "Чтение/запись метаданных отчетов", "JDBC")
+Rel(iam_service, user_db, "Верификация пользователей", "JDBC")
+Rel(logging_service, logs_db, "Сохранение и поиск логов", "Elasticsearch API")
+
+' Связи мониторинга и логирования
+Rel(api_gateway, monitoring_service, "Метрики запросов", "Prometheus")
+Rel(house_service, monitoring_service, "Метрики производительности", "Prometheus")
+Rel(device_service, monitoring_service, "Метрики устройств", "Prometheus")
+Rel(iot_gateway, monitoring_service, "Метрики IoT", "Prometheus")
+Rel(api_gateway, logging_service, "Логи запросов", "Logstash")
+Rel(house_service, logging_service, "Логи работы", "Logstash")
+Rel(device_service, logging_service, "Логи устройств", "Logstash")
+Rel(iot_gateway, logging_service, "Логи устройств IoT", "Logstash")
+
+' Связи с Message Broker
+Rel(user_service, message_broker, "События изменения профилей", "Kafka")
+Rel(house_service, message_broker, "События домов и комнат", "Kafka")
+Rel(device_service, message_broker, "События устройств", "Kafka")
+Rel(report_service, message_broker, "События отчетов", "Kafka")
+Rel(message_broker, notification_service, "Подписка на события", "Kafka")
+Rel(message_broker, house_service, "Обновления состояния", "Kafka")
+Rel(message_broker, device_service, "Обновления состояния", "Kafka")
+
+' Связи с IoT
+Rel(device_service, iot_gateway, "Команды устройствам", "MQTT")
+Rel(iot_gateway, sensors_system, "Обмен данными с устройствами", "AMQP/MQTT/Zigbee")
+Rel(sensors_system, iot_gateway, "Отправка показаний", "AMQP/MQTT/Zigbee")
+Rel(iot_gateway, message_broker, "Публикация событий от устройств", "Kafka")
+Rel(iot_gateway, time_series_db, "Сохранение показаний датчиков", "HTTP")
+
+' Связи для отчетов
+Rel(report_service, time_series_db, "Чтение данных датчиков", "HTTP")
+Rel(report_service, device_db, "Чтение метаданных устройств", "JDBC")
+
+' Связи уведомлений
+Rel(notification_service, user_service, "Получение данных пользователей", "HTTP")
+Rel(notification_service, firebase, "Отправка уведомлений", "HTTPS")
+Rel(firebase, mobile_app, "Push-уведомления", "FCM")
+
+SHOW_LEGEND()
+
+@enduml

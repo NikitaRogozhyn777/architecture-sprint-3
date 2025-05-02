@@ -1,0 +1,51 @@
+@startuml Notification Service - Component Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+AddElementTag("core", $bgColor="#E1F5FE", $fontColor="#0277BD", $borderColor="#4FC3F7")
+AddElementTag("integration", $bgColor="#E8F5E9", $fontColor="#2E7D32", $borderColor="#81C784")
+AddElementTag("observability", $bgColor="#FFF3E0", $fontColor="#EF6C00", $borderColor="#FFA726")
+
+Container_Boundary(notification_service, "Сервис уведомлений (Spring Boot)") {
+
+    ' --- Ядро сервиса ---
+    Component(event_consumer, "NotificationEventConsumer", "Spring @KafkaListener", "Обработка событий для уведомлений", $tags="core")
+    Component(notification_manager, "NotificationManager", "Spring @Service", "Логика формирования уведомлений", $tags="core")
+    Component(template_engine, "TemplateEngine", "Spring @Service", "Генерация текста уведомлений", $tags="core")
+
+    ' --- Интеграции ---
+    Component(firebase_client, "FirebaseMessagingClient", "Spring @Service", "Отправка push-уведомлений", $tags="integration")
+    Component(user_preference_client, "UserPreferenceClient", "Feign Client", "Получение настроек пользователей", $tags="integration")
+
+    ' --- Observability ---
+    Component(notification_logger, "NotificationLogger", "Spring AOP", "Логирование операций", $tags="observability")
+    Component(notification_metrics, "NotificationMetrics", "Micrometer", "Сбор метрик", $tags="observability")
+
+    ' --- Внутренние связи ---
+    Rel(event_consumer, notification_manager, "handleEvent()", "async")
+    Rel(notification_manager, template_engine, "generateMessage()", "sync")
+    Rel(notification_manager, user_preference_client, "getUserPreferences()", "HTTP")
+    Rel(notification_manager, firebase_client, "sendNotification()", "async")
+    Rel(notification_logger, event_consumer, "Логирует события", "AOP")
+    Rel(notification_metrics, firebase_client, "Метрики отправки", "Micrometer")
+}
+
+' --- Внешние системы ---
+System_Ext(kafka, "Message Broker", "Apache Kafka")
+System_Ext(firebase, "Firebase Cloud Messaging", "Google FCM")
+System_Ext(user_service, "User Service", "Java/Spring")
+System_Ext(elk, "ELK Stack", "Логирование")
+System_Ext(prometheus, "Prometheus", "Метрики")
+
+' --- Интеграционные связи ---
+Rel(kafka, event_consumer, "Подписка на события", "@KafkaListener")
+Rel(firebase_client, firebase, "Отправка уведомлений", "FCM API")
+Rel(user_preference_client, user_service, "Запрос настроек", "HTTP")
+
+' --- Observability связи ---
+Rel(notification_logger, elk, "Отправка логов", "Logstash")
+Rel(notification_metrics, prometheus, "Экспорт метрик", "Prometheus Pull")
+
+SHOW_LEGEND()
+
+
+@enduml

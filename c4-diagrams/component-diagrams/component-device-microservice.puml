@@ -1,0 +1,75 @@
+@startuml Device Service - Component Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+AddElementTag("command", $bgColor="#E1F5FE", $fontColor="#0277BD", $borderColor="#4FC3F7")
+AddElementTag("query", $bgColor="#E8F5E9", $fontColor="#2E7D32", $borderColor="#81C784")
+AddElementTag("event", $bgColor="#FFF3E0", $fontColor="#EF6C00", $borderColor="#FFA726")
+AddElementTag("observability", $bgColor="#F3E5F5", $fontColor="#7B1FA2", $borderColor="#BA68C8")
+
+Container_Boundary(device_service, "Сервис устройств (Spring Boot Application)") {
+
+    ' --- Command Side ---
+    Component(device_command_controller, "DeviceCommandController", "Spring REST Controller", "Управление устройствами", $tags="command")
+    Component(device_aggregate, "DeviceAggregate", "Spring @Service", "Логика управления устройством", $tags="command")
+    Component(device_command_service, "DeviceCommandService", "Spring @Service", "Оркестрация команд", $tags="command")
+
+    ' --- Query Side ---
+    Component(device_query_controller, "DeviceQueryController", "Spring REST Controller", "Чтение состояния устройств", $tags="query")
+    Component(device_read_repository, "DeviceReadRepository", "Spring Data JPA", "Оптимизированные запросы", $tags="query")
+    Component(state_projector, "DeviceStateProjector", "Spring @Service", "Проекция состояния", $tags="query")
+
+    ' --- Event Processing ---
+    Component(device_event_handler, "DeviceEventListener", "Spring @KafkaListener", "Обработка событий устройств", $tags="event")
+    Component(device_event_publisher, "DeviceEventPublisher", "Spring KafkaTemplate", "Публикация событий", $tags="event")
+
+    ' --- IoT Integration ---
+    Component(iot_gateway_client, "IoTGatewayClient", "Spring @Service", "Отправка команд в IoT Gateway", $tags="command")
+
+    ' --- Observability ---
+    Component(device_logging_aspect, "DeviceLoggingAspect", "Spring AOP", "Логирование команд", $tags="observability")
+    Component(device_metrics_service, "DeviceMetricsService", "Micrometer", "Сбор метрик устройств", $tags="observability")
+
+    ' --- Internal Connections ---
+    Rel(device_command_controller, device_command_service, "@PostMapping", "HTTP")
+    Rel(device_command_service, device_aggregate, "processCommand()", "method call")
+    Rel(device_aggregate, device_event_publisher, "publishEvent()", "KafkaTemplate")
+    Rel(device_aggregate, iot_gateway_client, "sendCommand()", "method call")
+    Rel(device_query_controller, device_read_repository, "@GetMapping", "HTTP")
+    Rel(device_query_controller, state_projector, "getState()", "method call")
+    Rel(device_event_handler, state_projector, "updateState()", "method call")
+    Rel(device_logging_aspect, device_command_controller, "Логирует команды", "AOP Advice")
+    Rel(device_metrics_service, iot_gateway_client, "Метрики команд", "Micrometer")
+}
+
+' --------- External Systems ---------
+System_Ext(api_gw, "API Gateway", "KrakenD")
+SystemDb(device_db_master, "PostgreSQL", "Device DB Master", "Метаданные (Write)")
+SystemDb(device_db_replica, "PostgreSQL", "Device DB Replica", "Метаданные (Read)")
+System_Ext(kafka, "Message Broker", "Apache Kafka")
+System_Ext(iot_gw, "IoT Gateway", "Java/Spring/Rabbit MQ")
+System_Ext(elk, "ELK Stack", "Логирование")
+System_Ext(prometheus, "Prometheus", "Метрики")
+
+' --- Database Connections ---
+Rel(device_command_service, device_db_master, "Сохраняет состояние", "JDBC (Write)")
+Rel(device_read_repository, device_db_replica, "Читает состояние", "JDBC (Read)")
+Rel(state_projector, device_db_replica, "Обновляет проекцию", "JDBC (Read)")
+
+' --- Event Bus ---
+Rel(device_event_publisher, kafka, "Публикует DeviceStateChanged", "Kafka")
+Rel(kafka, device_event_handler, "Слушает DeviceEvents", "@KafkaListener")
+
+' --- IoT Integration ---
+Rel(iot_gateway_client, iot_gw, "Отправка команд", "MQTT/AMQP")
+
+' --- Observability ---
+Rel(device_logging_aspect, elk, "Логи устройств", "Logstash")
+Rel(device_metrics_service, prometheus, "Метрики состояния", "Prometheus Pull")
+
+' --- API Connections ---
+Rel(api_gw, device_command_controller, "/api/v1/devices/command", "HTTP")
+Rel(api_gw, device_query_controller, "/api/v1/devices/query", "HTTP")
+
+SHOW_LEGEND()
+
+@enduml

@@ -1,0 +1,70 @@
+@startuml IoT Gateway - Component Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+AddElementTag("protocol", $bgColor="#E1F5FE", $fontColor="#0277BD", $borderColor="#4FC3F7")
+AddElementTag("core", $bgColor="#E8F5E9", $fontColor="#2E7D32", $borderColor="#81C784")
+AddElementTag("observability", $bgColor="#FFF3E0", $fontColor="#EF6C00", $borderColor="#FFA726")
+
+Container_Boundary(iot_gateway, "IoT Gateway (Spring Integration)") {
+
+    SystemDb(rabbitmq, "RabbitMQ", "Брокер сообщений\n• AMQP 0.9.1\n• MQTT Plugin")
+
+    ' --- Унифицированный адаптер ---
+    Component(rabbitmq_adapter, "RabbitMQ Adapter", "Spring AMQP", "MQTT+AMQP через RabbitMQ", $tags="protocol") {
+        Component(mqtt_plugin, "MQTT Plugin", "Порт 1883", "Входные сообщения")
+        Component(amqp_handler, "AMQP Handler", "Порт 5672", "Входные сообщения")
+        Component(command_sender, "Command Sender", "AMQP Publisher", "Исходящие команды")
+    }
+
+    Component(zigbee_adapter, "Zigbee Adapter", "Zigbee2MQTT", "Zigbee Bridge", $tags="protocol")
+
+    ' --- Ядро шлюза ---
+    Component(message_router, "MessageRouter", "Spring @Service", "Маршрутизация сообщений", $tags="core")
+    Component(command_processor, "CommandProcessor", "Spring @Service", "Обработка команд", $tags="core")
+    Component(event_publisher, "EventPublisher", "Spring Kafka", "Публикация событий", $tags="core")
+
+    ' --- Observability ---
+    Component(gateway_logger, "GatewayLogger", "Spring AOP", "Логирование", $tags="observability")
+    Component(gateway_metrics, "GatewayMetrics", "Micrometer", "Сбор метрик", $tags="observability")
+
+    ' --- Внутренние связи ---
+    Rel(rabbitmq_adapter, message_router, "Унифицированные сообщения", "MessageChannel")
+    Rel(zigbee_adapter, message_router, "Raw Messages", "MessageChannel")
+    Rel(message_router, command_processor, "Device Commands", "Async")
+    Rel(message_router, event_publisher, "Telemetry Data", "Async")
+    Rel(command_processor, rabbitmq_adapter, "Отправка команд", "RabbitTemplate")
+    Rel(gateway_logger, message_router, "Логирует сообщения", "AOP")
+    Rel(gateway_metrics, message_router, "Метрики трафика", "Micrometer")
+}
+
+' --- Внешние системы ---
+System_Ext(sensors, "IoT Устройства", "MQTT/AMQP")
+System_Ext(zigbee_devices, "Zigbee Устройства", "IEEE 802.15.4")
+System_Ext(kafka, "Kafka", "События устройств")
+SystemDb(influxdb, "InfluxDB", "Телеметрия")
+System_Ext(device_service, "Device Service", "HTTP")
+System_Ext(elk, "ELK Stack", "Логи")
+System_Ext(prometheus, "Prometheus", "Метрики")
+
+' --- Интеграционные связи ---
+' Входящий поток (устройства -> шлюз)
+Rel(sensors, rabbitmq, "Телеметрия", "MQTT/AMQP")
+Rel(rabbitmq, rabbitmq_adapter, "Сообщения", "AMQP")
+Rel(zigbee_adapter, zigbee_devices, "Данные", "Zigbee")
+
+' Исходящий поток (шлюз -> устройства)
+Rel(rabbitmq_adapter, rabbitmq, "Команды", "AMQP/Routing Key")
+Rel(rabbitmq, sensors, "Команды", "MQTT/AMQP")
+
+' Системные интеграции
+Rel(event_publisher, kafka, "События", "KafkaTemplate")
+Rel(message_router, influxdb, "Телеметрия", "HTTP API")
+Rel(device_service, command_processor, "Команды", "HTTP API")
+
+' Observability
+Rel(gateway_logger, elk, "Логи", "Logstash")
+Rel(gateway_metrics, prometheus, "Метрики", "Push")
+
+SHOW_LEGEND()
+
+@enduml
